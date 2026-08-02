@@ -61,7 +61,7 @@ $app->add(function (Request $request, $handler) {
     return $response
         ->withHeader('Access-Control-Allow-Origin', '*')
         ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        ->withHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 });
 
 
@@ -223,6 +223,197 @@ $app->group('/api', function ($group) {
         $db = getDbConnection();
         $stmt = $db->query("SELECT ingredient_id, ingredient_name FROM ingredients ORDER BY ingredient_id ASC");
         return jsonResponse($response, $stmt->fetchAll());
+    });
+
+    // NEW FEATURE 1: GET ALL ORIGINS
+    // The lab spec never exposed this, even though foods reference an origin_id.
+    $group->get('/origins', function (Request $request, Response $response) {
+        $db = getDbConnection();
+        $stmt = $db->query("SELECT origin_id, origin_name FROM origins ORDER BY origin_id ASC");
+        return jsonResponse($response, $stmt->fetchAll());
+    });
+
+    // NEW FEATURE 2: GET A RANDOM FOOD
+    // Useful for a "surprise me" / "what should I cook today" button on the frontend.
+    $group->get('/foods/random', function (Request $request, Response $response) {
+        $db = getDbConnection();
+
+        $stmt = $db->query(
+            "SELECT f.food_id, f.food_name, c.category_name, o.origin_name, f.instructions
+             FROM foods f
+             JOIN categories c ON c.category_id = f.category_id
+             JOIN origins o ON o.origin_id = f.origin_id
+             ORDER BY RAND()
+             LIMIT 1"
+        );
+        $row = $stmt->fetch();
+
+        if (!$row) {
+            return jsonResponse($response, [
+                'status'  => 'error',
+                'message' => 'No foods available'
+            ], 404);
+        }
+
+        return jsonResponse($response, buildFoodPayload($db, $row));
+    });
+
+    // NEW FEATURE 3: FILTER FOODS BY CATEGORY
+    $group->get('/foods/category/{id}', function (Request $request, Response $response, array $args) {
+        $db = getDbConnection();
+        $categoryId = (int)$args['id'];
+
+        $stmt = $db->prepare(
+            "SELECT f.food_id, f.food_name, c.category_name, o.origin_name, f.instructions
+             FROM foods f
+             JOIN categories c ON c.category_id = f.category_id
+             JOIN origins o ON o.origin_id = f.origin_id
+             WHERE f.category_id = :category_id
+             ORDER BY f.food_id ASC"
+        );
+        $stmt->execute(['category_id' => $categoryId]);
+        $rows = $stmt->fetchAll();
+
+        if (!$rows) {
+            return jsonResponse($response, [
+                'status'  => 'error',
+                'message' => 'No foods found for that category'
+            ], 404);
+        }
+
+        $foods = array_map(fn($row) => buildFoodPayload($db, $row), $rows);
+        return jsonResponse($response, $foods);
+    });
+
+    // NEW FEATURE 4: FILTER FOODS BY ORIGIN
+    $group->get('/foods/origin/{id}', function (Request $request, Response $response, array $args) {
+        $db = getDbConnection();
+        $originId = (int)$args['id'];
+
+        $stmt = $db->prepare(
+            "SELECT f.food_id, f.food_name, c.category_name, o.origin_name, f.instructions
+             FROM foods f
+             JOIN categories c ON c.category_id = f.category_id
+             JOIN origins o ON o.origin_id = f.origin_id
+             WHERE f.origin_id = :origin_id
+             ORDER BY f.food_id ASC"
+        );
+        $stmt->execute(['origin_id' => $originId]);
+        $rows = $stmt->fetchAll();
+
+        if (!$rows) {
+            return jsonResponse($response, [
+                'status'  => 'error',
+                'message' => 'No foods found for that origin'
+            ], 404);
+        }
+
+        $foods = array_map(fn($row) => buildFoodPayload($db, $row), $rows);
+        return jsonResponse($response, $foods);
+    });
+
+    // NEW FEATURE 5: UPDATE AN EXISTING FOOD
+    // Completes CRUD: Create (POST /foods) already existed, this adds Update.
+    $group->put('/foods/{id}', function (Request $request, Response $response, array $args) {
+        $db = getDbConnection();
+        $id = (int)$args['id'];
+        $data = json_decode((string)$request->getBody(), true);
+
+        // Confirm the food exists first
+        $checkStmt = $db->prepare("SELECT food_id FROM foods WHERE food_id = :id");
+        $checkStmt->execute(['id' => $id]);
+        if (!$checkStmt->fetch()) {
+            return jsonResponse($response, [
+                'status'  => 'error',
+                'message' => 'Food not found'
+            ], 404);
+        }
+
+        $required = ['food_name', 'category_id', 'origin_id', 'instructions'];
+        foreach ($required as $field) {
+            if (!isset($data[$field]) || $data[$field] === '') {
+                return jsonResponse($response, [
+                    'status'  => 'error',
+                    'message' => "Missing required field: $field"
+                ], 400);
+            }
+        }
+
+        $ingredientIds = $data['ingredient_ids'] ?? null;
+
+        try {
+            $db->beginTransaction();
+
+            $stmt = $db->prepare(
+                "UPDATE foods
+                 SET food_name = :food_name, category_id = :category_id,
+                     origin_id = :origin_id, instructions = :instructions
+                 WHERE food_id = :id"
+            );
+            $stmt->execute([
+                'food_name'    => $data['food_name'],
+                'category_id'  => (int)$data['category_id'],
+                'origin_id'    => (int)$data['origin_id'],
+                'instructions' => $data['instructions'],
+                'id'           => $id,
+            ]);
+
+            // Only touch ingredient links if the request actually included ingredient_ids
+            if (is_array($ingredientIds)) {
+                $deleteStmt = $db->prepare("DELETE FROM food_ingredients WHERE food_id = :id");
+                $deleteStmt->execute(['id' => $id]);
+
+                if (count($ingredientIds) > 0) {
+                    $ingStmt = $db->prepare(
+                        "INSERT INTO food_ingredients (food_id, ingredient_id) VALUES (:food_id, :ingredient_id)"
+                    );
+                    foreach ($ingredientIds as $ingredientId) {
+                        $ingStmt->execute([
+                            'food_id'       => $id,
+                            'ingredient_id' => (int)$ingredientId,
+                        ]);
+                    }
+                }
+            }
+
+            $db->commit();
+        } catch (\Exception $e) {
+            $db->rollBack();
+            return jsonResponse($response, [
+                'status'  => 'error',
+                'message' => 'Failed to update food: ' . $e->getMessage()
+            ], 500);
+        }
+
+        return jsonResponse($response, [
+            'status'  => 'success',
+            'message' => 'Food updated successfully.'
+        ], 200);
+    });
+
+    // NEW FEATURE 6: DELETE A FOOD
+    // Completes CRUD: Delete. food_ingredients rows for this food are removed
+    // automatically by the ON DELETE CASCADE constraint from the original schema.
+    $group->delete('/foods/{id}', function (Request $request, Response $response, array $args) {
+        $db = getDbConnection();
+        $id = (int)$args['id'];
+
+        $checkStmt = $db->prepare("SELECT food_id FROM foods WHERE food_id = :id");
+        $checkStmt->execute(['id' => $id]);
+        if (!$checkStmt->fetch()) {
+            return jsonResponse($response, [
+                'status'  => 'error',
+                'message' => 'Food not found'
+            ], 404);
+        }
+
+        $stmt = $db->prepare("DELETE FROM foods WHERE food_id = :id");
+        $stmt->execute(['id' => $id]);
+
+        return jsonResponse($response, [
+            'status'  => 'success',
+            'message' => 'Food deleted successfully.'
+        ], 200);
     });
 
     // Part 4.7: ADD NEW FOOD

@@ -1,187 +1,113 @@
 # Secured Filipino Cookbook API
 
-A REST API for exploring Filipino foods — their categories, regional origins,
-ingredients, and preparation instructions. Built with the Slim Framework and
-MySQL, protected with token-based authentication.
+A secured REST API for exploring Filipino foods — their categories, regional
+origins, ingredients, and preparation instructions — built with the Slim
+Framework and MySQL.
 
-This document is for developers who want to **consume this API** in their own
-application (website, mobile app, another system, etc.) — not for running the
-API's own source code.
+Built as a laboratory activity for DMMMSU-MLUC, demonstrating token-based
+API security with the Slim Framework.
 
-## Base URL
+## Features
 
-```
-http://localhost/filipino-cookbook-api/public
-```
-(Replace with wherever the API owner has it hosted — ask them for the actual
-base URL if you're consuming this from a different machine or network.)
+- Full CRUD on foods: create, read, update, and delete recipes
+- Retrieve all Filipino foods, or one food by ID
+- Search foods by name
+- Filter foods by category or by origin
+- Get a random food ("surprise me")
+- Retrieve all categories, origins, and ingredients
+- Add a new food with a JSON request, including its linked ingredients
+- Every `/api` route protected by Bearer token authentication
 
-## Authentication
+## Tech Stack
 
-Every route except `GET /` requires an API token sent as a Bearer token in
-the request header:
+- **PHP 8 + Slim Framework 4** — routing and middleware
+- **MySQL + PDO** — database layer, using prepared statements throughout
 
+## Database Structure
+
+5 tables: `categories`, `origins`, `foods`, `ingredients`, `food_ingredients`.
+
+A food belongs to one category and one origin. A food can have many
+ingredients, and an ingredient can belong to many foods — that many-to-many
+relationship is handled through the `food_ingredients` junction table.
+
+## API Endpoints
+
+| Method | Endpoint | Auth required | Description |
+|---|---|---|---|
+| GET | `/` | No | Welcome message |
+| GET | `/api/foods` | Yes | List all foods with category, origin, and ingredients |
+| GET | `/api/foods/{id}` | Yes | Get one food by ID |
+| GET | `/api/foods/search/{name}` | Yes | Search foods by name |
+| GET | `/api/foods/random` | Yes | Get one random food |
+| GET | `/api/foods/category/{id}` | Yes | List all foods in a given category |
+| GET | `/api/foods/origin/{id}` | Yes | List all foods from a given origin |
+| GET | `/api/categories` | Yes | List all categories |
+| GET | `/api/origins` | Yes | List all origins |
+| GET | `/api/ingredients` | Yes | List all ingredients |
+| POST | `/api/foods` | Yes | Add a new food record |
+| PUT | `/api/foods/{id}` | Yes | Update an existing food record |
+| DELETE | `/api/foods/{id}` | Yes | Delete a food record |
+
+Secured routes require this header:
 ```
 Authorization: Bearer dmmmsu-cookbook-token-2026
 ```
 
-Requests without a valid token receive:
-```json
-{
-  "status": "error",
-  "message": "Unauthorized access. Valid API token is required."
-}
-```
-with HTTP status `401 Unauthorized`.
-
-## Response Format
-
-All responses are JSON. Successful responses return the requested data
-directly (an object or array). Error responses follow this shape:
-```json
-{
-  "status": "error",
-  "message": "Description of what went wrong"
-}
-```
-
 ---
 
-## Endpoints
+## Setup Guide
 
-### 1. Welcome Message
-```
-GET /
-```
-No authentication required.
+### 1. Import the database
+1. Open phpMyAdmin (or MySQL CLI).
+2. Import `filipino_foods_relational.sql`. It creates the `filipino_cookbook_api`
+   database and its 5 tables (`categories`, `origins`, `foods`, `ingredients`,
+   `food_ingredients`) and seeds all the sample data.
 
-**Example response — 200 OK:**
-```json
-{
-  "message": "Welcome to the Secured Filipino Cookbook API",
-  "note": "Use a valid Bearer token to access /api endpoints."
-}
+### 2. Install dependencies
+Inside the `filipino-cookbook-api` folder, run:
 ```
-
----
-
-### 2. Get All Foods
+composer install
 ```
-GET /api/foods
-```
-Requires token. Returns every food record with its category, origin,
-instructions, and full ingredient list.
+(This reads `composer.json` and installs `slim/slim` + `slim/psr7` into `vendor/`.)
 
-**Example response — 200 OK:**
-```json
-[
-  {
-    "food_id": 1,
-    "food_name": "Adobo",
-    "category_name": "Main Dish",
-    "origin_name": "Philippines",
-    "instructions": "Marinate the meat with soy sauce, vinegar, garlic, bay leaves, and peppercorn. Simmer until the meat becomes tender and the sauce is reduced.",
-    "ingredients": [
-      "Bay leaves",
-      "Chicken or pork",
-      "Cooking oil",
-      "Garlic",
-      "Peppercorn",
-      "Soy sauce",
-      "Vinegar"
-    ]
-  }
-]
+### 3. Configure DB credentials
+Open `public/index.php` and check the `getDbConnection()` function near the top.
+Default is XAMPP-style: host `127.0.0.1`, user `root`, empty password. Adjust if
+your MySQL setup is different.
+
+### 4. Run the server
+From the project root:
+```
+php -S localhost:8000 -t public
+```
+Your API is now live at `http://localhost:8000`.
+
+Or, if deploying under XAMPP/Apache instead, place the project inside
+`htdocs` and visit `http://localhost/filipino-cookbook-api/public/` —
+the app auto-detects its own base path, so both setups work without
+code changes.
+
+### 5. Test with Thunder Client (or Postman)
+
+**Public route (no token needed):**
+```
+GET http://localhost:8000/
 ```
 
----
-
-### 3. Get Food by ID
+**Secured routes — add header:**
 ```
-GET /api/foods/{id}
-```
-Requires token. Returns a single food record.
-
-**Example:** `GET /api/foods/1`
-
-**Example response — 200 OK:** same shape as one item above.
-
-**If the ID doesn't exist — 404 Not Found:**
-```json
-{
-  "status": "error",
-  "message": "Food not found"
-}
+Authorization: Bearer dmmmsu-cookbook-token-2026
 ```
 
----
-
-### 4. Search Foods by Name
-```
-GET /api/foods/search/{name}
-```
-Requires token. Partial, case-insensitive match on food name.
-
-**Example:** `GET /api/foods/search/adobo`
-
-**Example response — 200 OK:** array of matching foods, same shape as
-endpoint 2.
-
-**If nothing matches — 404 Not Found:**
-```json
-{
-  "status": "error",
-  "message": "No foods matched your search"
-}
-```
-
----
-
-### 5. Get All Categories
-```
-GET /api/categories
-```
-Requires token.
-
-**Example response — 200 OK:**
-```json
-[
-  { "category_id": 1, "category_name": "Appetizer" },
-  { "category_id": 2, "category_name": "Dessert" },
-  { "category_id": 3, "category_name": "Grilled Dish" },
-  { "category_id": 4, "category_name": "Main Dish" },
-  { "category_id": 5, "category_name": "Noodle Dish" },
-  { "category_id": 6, "category_name": "Soup" },
-  { "category_id": 7, "category_name": "Vegetable Dish" }
-]
-```
-
----
-
-### 6. Get All Ingredients
-```
-GET /api/ingredients
-```
-Requires token.
-
-**Example response — 200 OK:**
-```json
-[
-  { "ingredient_id": 1, "ingredient_name": "Annatto oil" },
-  { "ingredient_id": 2, "ingredient_name": "Bagoong" }
-]
-```
-(Full list contains 64 ingredients.)
-
----
-
-### 7. Add a New Food
-```
-POST /api/foods
-```
-Requires token. Adds a new food record and links it to existing ingredients.
-
-**Request body:**
+Core endpoints to test:
+- `GET /api/foods` — all foods with category/origin/ingredients
+- `GET /api/foods/1` — Adobo by ID
+- `GET /api/foods/99` — should return 404 "Food not found"
+- `GET /api/foods/search/adobo` — search by name
+- `GET /api/categories` — all categories
+- `GET /api/ingredients` — all ingredients
+- `POST /api/foods` — add new food, body:
 ```json
 {
   "food_name": "Dinengdeng",
@@ -192,78 +118,51 @@ Requires token. Adds a new food record and links it to existing ingredients.
 }
 ```
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `food_name` | string | Yes | |
-| `category_id` | integer | Yes | Must match an existing `category_id` |
-| `origin_id` | integer | Yes | Must match an existing `origin_id` (see Origins below) |
-| `instructions` | string | Yes | |
-| `ingredient_ids` | array of integers | No | Must match existing `ingredient_id` values |
-
-**Example response — 201 Created:**
+Newer endpoints to test:
+- `GET /api/origins` — all origins
+- `GET /api/foods/random` — a random food each time you send it
+- `GET /api/foods/category/4` — all Main Dish foods
+- `GET /api/foods/origin/3` — all foods from the Ilocos Region
+- `PUT /api/foods/1` — update a food, body:
 ```json
 {
-  "status": "success",
-  "message": "Food added successfully."
+  "food_name": "Chicken Adobo",
+  "category_id": 4,
+  "origin_id": 4,
+  "instructions": "Updated instructions here.",
+  "ingredient_ids": [26, 54, 64]
 }
 ```
+- `DELETE /api/foods/15` — deletes a food (test on a throwaway record, not one you need)
 
-**If a required field is missing — 400 Bad Request:**
+**Missing/invalid token test** — remove the header or change the token value,
+you should get:
 ```json
 {
   "status": "error",
-  "message": "Missing required field: food_name"
+  "message": "Unauthorized access. Valid API token is required."
 }
 ```
+with a `401` status code.
 
----
+## Notes on Design Choices
 
-## Reference Data
-
-### Origins
-There's no `/api/origins` endpoint, so use these IDs directly when adding
-a food:
-
-| origin_id | origin_name |
-|---|---|
-| 1 | Bacolod |
-| 2 | Bicol Region |
-| 3 | Ilocos Region |
-| 4 | Philippines |
-
-### Categories
-Fetch live from `GET /api/categories`, or reference:
-
-| category_id | category_name |
-|---|---|
-| 1 | Appetizer |
-| 2 | Dessert |
-| 3 | Grilled Dish |
-| 4 | Main Dish |
-| 5 | Noodle Dish |
-| 6 | Soup |
-| 7 | Vegetable Dish |
-
----
-
-## Quick Start (example using fetch in JavaScript)
-
-```js
-const API_BASE = 'http://localhost/filipino-cookbook-api/public';
-const TOKEN = 'dmmmsu-cookbook-token-2026';
-
-fetch(`${API_BASE}/api/foods`, {
-  headers: { 'Authorization': `Bearer ${TOKEN}` }
-})
-  .then(res => res.json())
-  .then(data => console.log(data));
-```
-
-## Notes for Integrators
-
-- `food_id`, `category_id`, `origin_id`, and `ingredient_id` are all plain
-  integers and stable — safe to hardcode or cache in your own system.
-- CORS is enabled (`Access-Control-Allow-Origin: *`), so this API can be
-  called directly from a browser-based frontend on a different origin.
-- There is no rate limiting or per-user token — this is a single shared
-  token for the whole class/lab activity, not meant for production use.
+- `food_id` in the SQL script is a plain `INT PRIMARY KEY` (not
+  `AUTO_INCREMENT`), so the `POST /api/foods` handler calculates the next ID
+  manually (`MAX(food_id) + 1`) inside a transaction before inserting.
+- The token check middleware (`$authMiddleware`) is attached only to the
+  `/api` route group, so `/` stays public.
+- All food-returning endpoints reuse `buildFoodPayload()` and
+  `getIngredientsForFood()` so the ingredient list is always pulled fresh from
+  the `food_ingredients` junction table.
+- CORS headers are added so the API can be called from a browser-based
+  client, and the app auto-detects its own base path so it works whether run
+  standalone or deployed inside a subfolder under Apache. The allowed CORS
+  methods list includes `PUT` and `DELETE` to support the newer endpoints.
+- `PUT /api/foods/{id}` only replaces a food's ingredient links if
+  `ingredient_ids` is included in the request body — omitting the field
+  leaves existing ingredient links untouched, while sending an empty array
+  clears them.
+- `DELETE /api/foods/{id}` relies on the `ON DELETE CASCADE` constraint on
+  `food_ingredients.food_id` from the original schema, so deleting a food
+  automatically cleans up its ingredient links without a separate query.

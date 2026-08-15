@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kusina | Filipino Cookbook (via Hana's API)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green-deep:#1E2E22;
+    --green-mid:#2C4030;
+    --annatto:#C1440E;
+    --annatto-bright:#E2622A;
+    --gold:#D8A448;
+    --rice:#F2ECD9;
+    --rice-dim:#DCD3B8;
+    --ink:#181410;
+    --line: rgba(242,236,217,0.16);
+    --radius: 3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--green-deep);
+    color:var(--rice);
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  a{color:inherit;}
+
+  .weave-rule{
+    height:10px;
+    width:100%;
+    background-image:
+      repeating-linear-gradient(115deg, var(--annatto) 0 6px, transparent 6px 14px),
+      repeating-linear-gradient(65deg, var(--gold) 0 4px, transparent 4px 20px);
+    opacity:0.9;
+  }
+
+  header{ padding:28px clamp(20px,5vw,64px) 0; }
+  .top-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    flex-wrap:wrap; gap:12px; padding-bottom:22px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand .mark{ font-size:2rem; }
+  .brand h1{ font-size:1.6rem; margin:0; }
+  .brand .tag{
+    font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--rice-dim); margin-left:4px;
+  }
+  nav{ display:flex; gap:6px; flex-wrap:wrap; }
+  nav button{
+    background:transparent; border:1px solid var(--line); color:var(--rice);
+    font-family:'Space Grotesk',sans-serif; font-size:0.82rem; padding:9px 16px;
+    border-radius:var(--radius); cursor:pointer; transition:all .15s ease;
+  }
+  nav button:hover{ border-color:var(--gold); color:var(--gold); }
+  nav button.active{ background:var(--annatto); border-color:var(--annatto); color:var(--rice); }
+
+  main{ max-width:1180px; margin:0 auto; padding:36px clamp(20px,5vw,64px) 80px; }
+
+  .hero{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    gap:24px; margin-bottom:16px; flex-wrap:wrap;
+  }
+  .hero h2{ font-size:clamp(1.8rem, 3.2vw, 2.6rem); margin:0 0 6px; max-width:640px; line-height:1.05; }
+  .hero p{ color:var(--rice-dim); margin:0; max-width:520px; font-size:0.95rem; }
+
+  .source-note{
+    font-size:0.78rem; color:var(--rice-dim); margin:0 0 24px;
+    padding:10px 14px; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--green-mid);
+  }
+  .source-note b{ color:var(--gold); }
+
+  .connection-pill{
+    font-size:0.72rem; padding:6px 12px; border-radius:20px; border:1px solid var(--line);
+    display:flex; align-items:center; gap:8px; white-space:nowrap;
+  }
+  .dot{width:7px;height:7px;border-radius:50%; background:#6B7; box-shadow:0 0 0 3px rgba(107,187,119,0.15);}
+  .dot.off{background:#C1440E; box-shadow:0 0 0 3px rgba(193,68,14,0.2);}
+
+  .controls{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:22px; }
+  .search-box{ flex:1; min-width:220px; }
+  .search-box input{
+    width:100%; background:var(--green-mid); border:1px solid var(--line); color:var(--rice);
+    padding:12px 14px; border-radius:var(--radius); font-family:'Space Grotesk',sans-serif; font-size:0.92rem;
+  }
+  .search-box input::placeholder{ color:var(--rice-dim); }
+  .search-box input:focus{ outline:none; border-color:var(--gold); }
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{
+    font-size:0.78rem; padding:8px 14px; border:1px solid var(--line); border-radius:20px;
+    cursor:pointer; background:transparent; color:var(--rice-dim); transition:all .15s ease;
+  }
+  .chip:hover{ border-color:var(--gold); color:var(--gold); }
+  .chip.active{ background:var(--gold); border-color:var(--gold); color:var(--ink); font-weight:500; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:18px; }
+  .card{
+    background:var(--green-mid); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px; cursor:pointer; transition:transform .15s ease, border-color .15s ease;
+    position:relative; overflow:hidden;
+  }
+  .card:hover{ transform:translateY(-3px); border-color:var(--gold); }
+  .card::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:4px;
+    background-image:repeating-linear-gradient(115deg, var(--annatto) 0 5px, var(--gold) 5px 10px);
+    opacity:0.85;
+  }
+  .card .eyebrow{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--gold); margin-bottom:8px; }
+  .card h3{ font-size:1.2rem; margin:0 0 6px; }
+  .card .origin{ font-size:0.8rem; color:var(--rice-dim); margin-bottom:10px; }
+  .card .ing-count{ font-size:0.75rem; color:var(--rice-dim); border-top:1px solid var(--line); padding-top:10px; margin-top:4px; }
+
+  .empty, .loading{ text-align:center; padding:60px 20px; color:var(--rice-dim); }
+  .empty .mark, .loading .mark{ font-size:2.4rem; display:block; margin-bottom:10px; }
+  .empty code, .loading code{ color:var(--gold); }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,14,10,0.72); display:none;
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .overlay.show{ display:flex; }
+  .modal{
+    background:var(--green-mid); border:1px solid var(--line); border-radius:var(--radius);
+    max-width:560px; width:100%; max-height:85vh; overflow-y:auto; padding:30px; position:relative;
+  }
+  .modal .close{ position:absolute; top:16px; right:16px; background:none; border:none; color:var(--rice-dim); font-size:1.3rem; cursor:pointer; line-height:1; }
+  .modal .close:hover{ color:var(--gold); }
+  .modal .eyebrow{ font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--gold); margin-bottom:8px; }
+  .modal h2{ margin:0 0 4px; font-size:1.7rem; }
+  .modal .origin{ color:var(--rice-dim); font-size:0.88rem; margin-bottom:20px; }
+  .modal h4{ font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--gold); margin:20px 0 10px; }
+  .modal p{ line-height:1.6; font-size:0.92rem; margin:0; }
+  .ing-tags{ display:flex; flex-wrap:wrap; gap:8px; }
+  .ing-tag{ font-size:0.8rem; padding:6px 12px; background:var(--green-deep); border:1px solid var(--line); border-radius:20px; }
+
+  .form-card{ background:var(--green-mid); border:1px solid var(--line); border-radius:var(--radius); padding:28px clamp(20px,4vw,36px); max-width:640px; }
+  .field{ margin-bottom:18px; }
+  .field label{ display:block; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--gold); margin-bottom:8px; }
+  .field input, .field textarea, .field select{
+    width:100%; background:var(--green-deep); border:1px solid var(--line); color:var(--rice);
+    padding:11px 13px; border-radius:var(--radius); font-family:'Space Grotesk',sans-serif; font-size:0.92rem;
+  }
+  .field textarea{ min-height:90px; resize:vertical; }
+  .field input:focus, .field textarea:focus, .field select:focus{ outline:none; border-color:var(--gold); }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .ing-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:8px;
+    max-height:220px; overflow-y:auto; padding:12px; border:1px solid var(--line);
+    border-radius:var(--radius); background:var(--green-deep);
+  }
+  .ing-check{ display:flex; align-items:center; gap:8px; font-size:0.82rem; color:var(--rice-dim); }
+  .ing-check input{ width:auto; }
+  .submit-btn{
+    background:var(--annatto); color:var(--rice); border:none; padding:13px 24px;
+    border-radius:var(--radius); font-family:'Space Grotesk',sans-serif; font-weight:500;
+    font-size:0.92rem; cursor:pointer; transition:background .15s ease;
+  }
+  .submit-btn:hover{ background:var(--annatto-bright); }
+  .submit-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .form-msg{ margin-top:14px; padding:12px 14px; border-radius:var(--radius); font-size:0.85rem; display:none; }
+  .form-msg.show{ display:block; }
+  .form-msg.ok{ background:rgba(107,187,119,0.15); border:1px solid #6B7; color:#B7E3BE; }
+  .form-msg.err{ background:rgba(193,68,14,0.15); border:1px solid var(--annatto); color:#F0B69A; }
+
+  .settings-card{
+    background:var(--green-mid); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 26px; max-width:640px; margin-bottom:24px;
+  }
+  .settings-card label{ display:block; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--gold); margin-bottom:8px; }
+  .settings-row{ display:flex; gap:10px; }
+  .settings-row input{
+    flex:1; background:var(--green-deep); border:1px solid var(--line); color:var(--rice);
+    padding:11px 13px; border-radius:var(--radius); font-family:'Space Grotesk',sans-serif; font-size:0.9rem;
+  }
+  .settings-row button{
+    background:var(--gold); color:var(--ink); border:none; padding:0 20px; border-radius:var(--radius);
+    font-family:'Space Grotesk',sans-serif; font-weight:600; cursor:pointer; font-size:0.85rem;
+  }
+
+  footer{ text-align:center; padding:22px; font-size:0.75rem; color:var(--rice-dim); border-top:1px solid var(--line); }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-track{ background:var(--green-deep); }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   CONFIG
+   This frontend calls a classmate's API (Hana's), not our own.
+   Change API_BASE below to wherever she's actually hosting it —
+   there's also a Settings panel in the UI so it can be changed
+   without editing this file.
+   ============================================================ */
+let API_BASE = localStorage.getItem('kusina_api_base') || 'http://localhost/hana/public';
+const API_TOKEN = 'dmmmsu-cookbook-token-2026'; // same shared lab token
+
+const ORIGINS = [
+  { origin_id: 1, origin_name: 'Bacolod' },
+  { origin_id: 2, origin_name: 'Bicol Region' },
+  { origin_id: 3, origin_name: 'Ilocos Region' },
+  { origin_id: 4, origin_name: 'Philippines' },
+];
+
+let state = {
+  view: 'menu',          // 'menu' | 'add' | 'settings'
+  foods: [],
+  categories: [],
+  ingredients: [],
+  activeCategory: null,
+  searchTerm: '',
+  connected: null,
+  connectionError: null,
+  selectedFood: null,
+};
+
+// GET wrapper - attaches the Bearer token to every call to Hana's API
+async function apiGet(path) {
+  const res = await fetch(API_BASE + path, {
+    headers: { 'Authorization': 'Bearer ' + API_TOKEN }
+  });
+  if (!res.ok) throw new Error('Request failed: ' + res.status);
+  return res.json();
+}
+
+// POST wrapper - only used for /api/foods (Add New Food)
+async function apiPost(path, body) {
+  const res = await fetch(API_BASE + path, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + API_TOKEN,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
+}
+
+async function loadAll() {
+  state.connected = null;
+  state.connectionError = null;
+  render();
+  try {
+    const [foods, categories, ingredients] = await Promise.all([
+      apiGet('/api/foods'),
+      apiGet('/api/categories'),
+      apiGet('/api/ingredients'),
+    ]);
+    state.foods = foods;
+    state.categories = categories;
+    state.ingredients = ingredients;
+    state.connected = true;
+  } catch (e) {
+    state.connected = false;
+    state.connectionError = e.message;
+  }
+  render();
+}
+
+async function runSearch(term) {
+  state.searchTerm = term;
+  if (!term) {
+    const foods = await apiGet('/api/foods').catch(() => []);
+    state.foods = foods;
+    render();
+    return;
+  }
+  try {
+    const foods = await apiGet('/api/foods/search/' + encodeURIComponent(term));
+    state.foods = foods;
+  } catch (e) {
+    state.foods = [];
+  }
+  render();
+}
+
+function setCategory(catName) {
+  state.activeCategory = state.activeCategory === catName ? null : catName;
+  render();
+}
+
+function filteredFoods() {
+  if (!state.activeCategory) return state.foods;
+  return state.foods.filter(f => f.category_name === state.activeCategory);
+}
+
+function openFood(food) { state.selectedFood = food; render(); }
+function closeModal() { state.selectedFood = null; render(); }
+function setView(v) { state.view = v; render(); }
+
+function saveApiBase(e) {
+  e.preventDefault();
+  const input = document.getElementById('api-base-input');
+  API_BASE = input.value.trim().replace(/\/$/, '');
+  localStorage.setItem('kusina_api_base', API_BASE);
+  loadAll();
+}
+
+async function handleAddFood(e) {
+  e.preventDefault();
+  const form = e.target;
+  const msgEl = document.getElementById('form-msg');
+  const btn = document.getElementById('submit-btn');
+
+  const checkedIngs = Array.from(form.querySelectorAll('input[name="ing"]:checked'))
+    .map(i => parseInt(i.value));
+
+  const payload = {
+    food_name: form.food_name.value.trim(),
+    category_id: parseInt(form.category_id.value),
+    origin_id: parseInt(form.origin_id.value),
+    instructions: form.instructions.value.trim(),
+    ingredient_ids: checkedIngs
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const { ok, data } = await apiPost('/api/foods', payload); // POST /api/foods on Hana's API
+
+  btn.disabled = false;
+  btn.textContent = 'Save Recipe';
+
+  msgEl.classList.remove('ok','err');
+  msgEl.classList.add('show', ok ? 'ok' : 'err');
+  msgEl.textContent = ok ? ('\u2713 ' + data.message) : ('\u2715 ' + (data.message || 'Something went wrong.'));
+
+  if (ok) {
+    form.reset();
+    const foods = await apiGet('/api/foods').catch(() => state.foods);
+    state.foods = foods;
+  }
+}
+
+function render() {
+  const app = document.getElementById('app');
+
+  const nav = `
+    <header>
+      <div class="top-row">
+        <div class="brand">
+          <span class="mark">\uD83C\uDF72</span>
+          <h1>Kusina</h1>
+          <span class="tag">Powered by Hana's Cookbook API</span>
+        </div>
+        <nav>
+          <button class="${state.view==='menu'?'active':''}" onclick="setView('menu')">Menu</button>
+          <button class="${state.view==='add'?'active':''}" onclick="setView('add')">Add Recipe</button>
+          <button class="${state.view==='settings'?'active':''}" onclick="setView('settings')">Settings</button>
+        </nav>
+      </div>
+    </header>
+    <div class="weave-rule"></div>
+  `;
+
+  let body = '';
+
+  if (state.view === 'settings') {
+    body = `
+      <main>
+        <div class="hero"><div>
+          <h2>API Connection</h2>
+          <p>Point this app at wherever Hana's API is actually running.</p>
+        </div></div>
+        <form class="settings-card" onsubmit="saveApiBase(event)">
+          <label>API Base URL</label>
+          <div class="settings-row">
+            <input type="text" id="api-base-input" value="${API_BASE}" placeholder="http://localhost/hana/public">
+            <button type="submit">Save & Reconnect</button>
+          </div>
+        </form>
+        <p style="color:var(--rice-dim); font-size:0.85rem; max-width:600px;">
+          This should be the folder containing Hana's <code>public/index.php</code> \u2014
+          for example <code>http://localhost/hana/public</code> if her project sits in
+          <code>htdocs/hana</code>, or <code>http://localhost:8001</code> if she's running it
+          with <code>php -S</code> on a different port than your own API.
+        </p>
+      </main>
+    `;
+  } else if (state.connected === false) {
+    body = `
+      <main>
+        <div class="empty">
+          <span class="mark">\u26A0</span>
+          <h3>Can't reach Hana's API</h3>
+          <p>Currently pointed at <code>${API_BASE}</code></p>
+          <p style="max-width:520px; margin:10px auto 0;">
+            This is usually one of two things: her server isn't running, or her API doesn't
+            send CORS headers yet (needed for a browser page on a different origin to call it).
+            Check the Settings tab to fix the URL, or see the documentation for the CORS fix.
+          </p>
+          <p style="margin-top:14px;"><button class="chip active" onclick="setView('settings')">Go to Settings</button></p>
+        </div>
+      </main>`;
+  } else if (state.connected === null) {
+    body = `<main><div class="loading"><span class="mark">\u25CC</span>Connecting to Hana's API\u2026</div></main>`;
+  } else if (state.view === 'menu') {
+    const foods = filteredFoods();
+    const cats = state.categories;
+
+    body = `
+      <main>
+        <div class="hero">
+          <div>
+            <h2>What's cooking today?</h2>
+            <p>Every dish here is pulled live from Hana's secured Slim API \u2014 not a local copy.</p>
+          </div>
+          <div class="connection-pill"><span class="dot"></span> Connected</div>
+        </div>
+
+        <div class="source-note">Data source: <b>${API_BASE}</b> &middot; <span onclick="setView('settings')" style="text-decoration:underline; cursor:pointer;">change</span></div>
+
+        <div class="controls">
+          <div class="search-box">
+            <input type="text" id="search-input" placeholder="Search a dish, e.g. adobo..." value="${state.searchTerm}" oninput="runSearch(this.value)">
+          </div>
+        </div>
+
+        <div class="chips" style="margin-bottom:22px;">
+          ${cats.map(c => `<button class="chip ${state.activeCategory===c.category_name?'active':''}" onclick="setCategory('${c.category_name.replace(/'/g,"\\'")}')">${c.category_name}</button>`).join('')}
+        </div>
+
+        ${foods.length === 0 ? `
+          <div class="empty">
+            <span class="mark">\uD83C\uDF7D</span>
+            <h3>No dishes found</h3>
+            <p>Try a different search term or category.</p>
+          </div>
+        ` : `
+          <div class="grid">
+            ${foods.map(f => `
+              <div class="card" onclick='openFood(${JSON.stringify(f).replace(/'/g,"&apos;")})'>
+                <div class="eyebrow">${f.category_name}</div>
+                <h3>${f.food_name}</h3>
+                <div class="origin">${f.origin_name}</div>
+                <div class="ing-count">${f.ingredients.length} ingredients</div>
+              </div>
+            `).join('')}
+          </div>
+        `}
+      </main>
+    `;
+  } else if (state.view === 'add') {
+    body = `
+      <main>
+        <div class="hero">
+          <div>
+            <h2>Add a new recipe</h2>
+            <p>Submits to <code>POST ${API_BASE}/api/foods</code> on Hana's server.</p>
+          </div>
+        </div>
+
+        <form class="form-card" onsubmit="handleAddFood(event)">
+          <div class="field">
+            <label>Food name</label>
+            <input type="text" name="food_name" placeholder="e.g. Dinengdeng" required>
+          </div>
+
+          <div class="two-col">
+            <div class="field">
+              <label>Category</label>
+              <select name="category_id" required>
+                <option value="" disabled selected>Choose category</option>
+                ${state.categories.map(c => `<option value="${c.category_id}">${c.category_name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label>Origin</label>
+              <select name="origin_id" required>
+                <option value="" disabled selected>Choose origin</option>
+                ${ORIGINS.map(o => `<option value="${o.origin_id}">${o.origin_name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Instructions</label>
+            <textarea name="instructions" placeholder="Cooking steps..." required></textarea>
+          </div>
+
+          <div class="field">
+            <label>Ingredients</label>
+            <div class="ing-grid">
+              ${state.ingredients.map(i => `
+                <label class="ing-check">
+                  <input type="checkbox" name="ing" value="${i.ingredient_id}">
+                  ${i.ingredient_name}
+                </label>
+              `).join('')}
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn" id="submit-btn">Save Recipe</button>
+          <div class="form-msg" id="form-msg"></div>
+        </form>
+      </main>
+    `;
+  }
+
+  const modal = state.selectedFood ? `
+    <div class="overlay show" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <button class="close" onclick="closeModal()">&times;</button>
+        <div class="eyebrow">${state.selectedFood.category_name}</div>
+        <h2>${state.selectedFood.food_name}</h2>
+        <div class="origin">${state.selectedFood.origin_name}</div>
+        <h4>Instructions</h4>
+        <p>${state.selectedFood.instructions}</p>
+        <h4>Ingredients</h4>
+        <div class="ing-tags">
+          ${state.selectedFood.ingredients.map(i => `<span class="ing-tag">${i}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+  ` : '<div class="overlay"></div>';
+
+  const foot = `<footer>Kusina &middot; a frontend for Hana's Filipino Cookbook API &middot; DMMMSU-MLUC</footer>`;
+
+  app.innerHTML = nav + body + modal + foot;
+}
+
+loadAll();
+</script>
+
+</body>
+</html>

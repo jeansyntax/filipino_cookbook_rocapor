@@ -173,3 +173,11 @@ with a `401` status code.
 - **GitHub Username:** jeansyntax
 - **Repository Link:** (https://github.com/jeansyntax/filipino_cookbook.git)
 - **Date Completed:** July 2026
+
+ ## Client Kusina App API owner
+- **API Owner:** MARIGZA, Hannah H.
+- **Course and Section:** BS Information Technology 4B
+- **GitHub Username:** Hanabel-24
+- **Repository Link:** (https://github.com/Hanabel-24/filipino-cookbook-api-marigza.git)
+- **Date Completed:** July 2026
+   

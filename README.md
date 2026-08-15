@@ -166,3 +166,10 @@ with a `401` status code.
 - `DELETE /api/foods/{id}` relies on the `ON DELETE CASCADE` constraint on
   `food_ingredients.food_id` from the original schema, so deleting a food
   automatically cleans up its ingredient links without a separate query.
+
+  ## Developer Information
+- **Name:** ROCAPOR, Jean Mark Baldemor
+- **Course and Section:** BS Information Technology 4B
+- **GitHub Username:** jeansyntax
+- **Repository Link:** (https://github.com/jeansyntax/filipino_cookbook.git)
+- **Date Completed:** July 2026
